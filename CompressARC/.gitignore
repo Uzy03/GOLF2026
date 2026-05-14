@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+outputs/
+*.onnx
+*.onnx.data
+results.json
+dataset/
+results_for_the_blog_post/
