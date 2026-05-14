@@ -1,0 +1,40 @@
+{
+  "effortLevel": "high",
+  "alwaysThinkingEnabled": true,
+  "permissions": {
+    "defaultMode": "bypassPermissions"
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/detect_correction.sh"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/load_lessons.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/udy03/Desktop/Development/2026/GOLF/.claude/hooks/enforce_delegation.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
