@@ -19,15 +19,14 @@ dependencies = [
 package = false
 dev-dependencies = ["pytest>=8.0.0"]
 
-# Linux server: CPU-only torch (driver 510 / CUDA 11.6 is too old for cu117+)
-# To enable GPU, upgrade NVIDIA driver to 520+ (CUDA 11.8) then switch to cu118 index
+# WSL / Linux: CUDA 12.4 (driver 596 / CUDA 13.2, RTX 3080)
 [[tool.uv.index]]
-name = "pytorch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
 explicit = true
 
 [tool.uv.sources]
 torch = [
-    { index = "pytorch-cpu", marker = "sys_platform == 'linux'" },
+    { index = "pytorch-cu124", marker = "sys_platform == 'linux'" },
 ]
 

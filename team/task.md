@@ -1,55 +1,106 @@
 # 🤖 Copilot タスク指示
 
-/Users/udy03/Desktop/Development/2026/GOLF/CompressARC/onnx_export.py の `export_to_onnx` 関数を修正してください。
 
-## 問題
+## タスク: onnx_export.py に新しいアーキテクチャを追加する
 
-現在の実装に `os.environ.setdefault("TORCH_LOGS", "")` という行がある。
-これが TORCH_LOGS 環境変数を空文字でセットしてしまい、
-その結果 torch._logging が「TORCH_LOGS env var を使うので set_logs() 呼び出しを無視する」と判断し、
-以下の警告を出す:
+対象ファイル: /home/user/GOLF2026/CompressARC/onnx_export.py
 
-```
-W0514 14:23:52.176000 89880 torch/_logging/_internal.py:488]
-Using TORCH_LOGS environment variable for log settings, ignoring call to set_logs
-```
+TwoLayerConvModelクラスの後、ARCH_REGISTRYの前に以下の6クラスを追加し、ARCH_REGISTRYも更新せよ。既存コードは一切変更しない。
 
-## 修正内容
+### 追加クラス（one_hot_encode, nn, F, torch は既にimport済み）
 
-`export_to_onnx` 関数内の以下の**2点**を変更する:
+class Conv5x5Model(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv = nn.Conv2d(10, 10, kernel_size=5, padding=2, bias=True)
+    def forward(self, x):
+        return self.conv(one_hot_encode(x))
 
-**変更1: `os.environ.setdefault("TORCH_LOGS", "")` を削除する**
+class DeepConvModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv1 = nn.Conv2d(10, 32, 3, padding=1, bias=True)
+        self.conv2 = nn.Conv2d(32, 32, 3, padding=1, bias=True)
+        self.conv3 = nn.Conv2d(32, 10, 1, bias=True)
+    def forward(self, x):
+        h = one_hot_encode(x)
+        h = F.relu(self.conv1(h))
+        h = F.relu(self.conv2(h))
+        return self.conv3(h)
 
-削除対象:
-```python
-    os.environ.setdefault("TORCH_LOGS", "")
-```
+class GlobalLocalModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.local_conv = nn.Conv2d(10, 16, 3, padding=1, bias=True)
+        self.global_fc  = nn.Linear(10, 16, bias=True)
+        self.out_conv   = nn.Conv2d(32, 10, 1, bias=True)
+    def forward(self, x):
+        h = one_hot_encode(x)
+        local = F.relu(self.local_conv(h))
+        g = h.mean(dim=[2, 3])
+        g = F.relu(self.global_fc(g)).unsqueeze(-1).unsqueeze(-1).expand(-1, -1, h.shape[2], h.shape[3])
+        return self.out_conv(torch.cat([local, g], dim=1))
 
-この行を完全に削除する（`import os` も不要になるので一緒に削除する）。
+class SmallAttentionModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.embed    = nn.Linear(10, 32, bias=True)
+        self.attn     = nn.MultiheadAttention(embed_dim=32, num_heads=4, batch_first=True)
+        self.out_proj = nn.Linear(32, 10, bias=True)
+    def forward(self, x):
+        h = one_hot_encode(x).float()
+        B, C, H, W = h.shape
+        h = h.permute(0, 2, 3, 1).reshape(B, H * W, C)
+        h = self.embed(h)
+        h, _ = self.attn(h, h, h)
+        h = self.out_proj(h)
+        return h.reshape(B, H, W, 10).permute(0, 3, 1, 2)
 
-**変更2: `redirect_stdout` を `redirect_stderr` も含むように拡張する**
+class WideConvModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv1 = nn.Conv2d(10, 64, 3, padding=1, bias=True)
+        self.conv2 = nn.Conv2d(64, 64, 3, padding=1, bias=True)
+        self.conv3 = nn.Conv2d(64, 64, 3, padding=1, bias=True)
+        self.conv4 = nn.Conv2d(64, 64, 3, padding=1, bias=True)
+        self.conv5 = nn.Conv2d(64, 10, 1, bias=True)
+    def forward(self, x):
+        h = one_hot_encode(x)
+        for conv in [self.conv1, self.conv2, self.conv3, self.conv4]:
+            h = F.relu(conv(h))
+        return self.conv5(h)
 
-現在:
-```python
-    _sink = io.StringIO()
-    with warnings.catch_warnings(), contextlib.redirect_stdout(_sink):
-```
+class LargeAttentionModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.embed    = nn.Linear(10, 64, bias=True)
+        self.attn     = nn.MultiheadAttention(embed_dim=64, num_heads=4, batch_first=True)
+        self.out_proj = nn.Linear(64, 10, bias=True)
+    def forward(self, x):
+        h = one_hot_encode(x).float()
+        B, C, H, W = h.shape
+        h = h.permute(0, 2, 3, 1).reshape(B, H * W, C)
+        h = self.embed(h)
+        h, _ = self.attn(h, h, h)
+        h = self.out_proj(h)
+        return h.reshape(B, H, W, 10).permute(0, 3, 1, 2)
 
-変更後:
-```python
-    _sink = io.StringIO()
-    with warnings.catch_warnings(), contextlib.redirect_stdout(_sink), contextlib.redirect_stderr(_sink):
-```
+### ARCH_REGISTRY の差し替え（既存の4エントリを含め以下に完全置換）
+ARCH_REGISTRY = [
+    ('color_remap',    ColorRemapModel),
+    ('conv1x1',        Conv1x1Model),
+    ('conv3x3',        Conv3x3Model),
+    ('two_layer_conv', TwoLayerConvModel),
+    ('conv5x5',        Conv5x5Model),
+    ('deep_conv',      DeepConvModel),
+    ('global_local',   GlobalLocalModel),
+    ('small_attn',     SmallAttentionModel),
+    ('wide_conv',      WideConvModel),
+    ('large_attn',     LargeAttentionModel),
+]
 
-これにより:
-- stdout へ出力される `[torch.onnx] Obtain model graph...` 等を抑制
-- stderr へ出力される `W0514...` glog 警告も抑制
-- tqdm は自分自身の fd を持つので影響なし
-
-この関数1つだけ修正してください。他は変更不要。
 
 ---
-
 ## 完了条件
-- 指示されたファイルを修正すること
+- 指示されたファイルを全て実装すること
 - 実装後は必ず team/report.md に成果物一覧と注意事項を記載すること
